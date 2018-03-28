@@ -1,3 +1,5 @@
+#!/usr/bin/python2.7
+# -*- coding: utf-8 -*-
 import sys
 from OpenGL.GL import *  # exception car prefixe systematique
 from OpenGL.GLU import *
@@ -11,20 +13,35 @@ listVertices = []
 listCoordinates = []
 centerModel = []
 
-cameraX = 50
-cameraY = 50
+# Variabes pour la position de la caméra
+cameraX, cameraY, cameraZ = 50, 50, 200
+centerX, centerY, centerZ = 10, 0, 0
+upX, upY, upZ = 0, 1, 0
+lengthModel, heightModel = 0, 0
+isTranlateActivated = False
+
+
 
 # Méthode pour initier les paramèters graphiques de la fenêtre
 def init():
-    global quadric, listNormales, listTriangles, listVertices, listCoordinates, centerModel
+    # Set le background en noir
+    glClearColor (0.0, 0.0, 0.0, 0.0)
 
-    indexLine = 0
-    minX = 0
-    maxX = 0
-    minY = 0
-    maxY = 0
-    minZ = 0
-    maxZ = 0
+    glEnable(GL_DEPTH_TEST)  # Enable depth testing for z-culling
+    glShadeModel(GL_SMOOTH)   # Enable smooth shading
+    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
+    glEnable(GL_LIGHTING)
+    glEnable(GL_LIGHT0)
+    glEnable(GL_COLOR_MATERIAL)
+    glEnable(GL_NORMALIZE)
+    glDisable( GL_CULL_FACE )
+
+
+def readFileAndFetchData():
+    global listNormales, listTriangles, listVertices, listCoordinates, centerModel, lengthModel, heightModel
+
+    indexLine, minX, maxX, minY, maxY, minZ, maxZ = 0, 0, 0, 0, 0, 0, 0
+
     with open('rocket.stl') as fp:
         for line in fp:
             if "normal" in line:
@@ -63,6 +80,9 @@ def init():
                 if(z > maxZ):
                     maxZ = z
 
+                lengthModel = maxX - minX
+                heightModel = maxY - minY
+
                 listCoordinates = [ x, y, z]
                 #print(listCoordinates)
                 listVertices.append(listCoordinates)
@@ -72,48 +92,26 @@ def init():
                     listCoordinates = []
                     #print("Triangle ", indexLine, "--------------")
     centerModel = [(minX + maxX)/2, (minY + maxY)/2, (minZ + maxZ)/2]
-    print("centerModel", centerModel)
-    # Set le background en noir
-    glClearColor (0.0, 0.0, 0.0, 0.0)
-    #glShadeModel (GL_FLAT)
-    #quadric = gluNewQuadric()
-    # Pour avoir des figures pleines et non plus fil de fer
-    #gluQuadricDrawStyle(quadric, GLU_FILL)
-
-    glEnable(GL_DEPTH_TEST)  # Enable depth testing for z-culling
-
-    glShadeModel(GL_SMOOTH)   # Enable smooth shading
-
-    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
-    glEnable(GL_LIGHTING)
-    glEnable(GL_LIGHT0)
-    glEnable(GL_COLOR_MATERIAL)
-    glEnable(GL_NORMALIZE)
-    glDisable( GL_CULL_FACE )
-
-
 
 def drawModel():
-    # Generate 1 display list
-    #GLuint list1 = glGenLists( 1 );
-    #glNewList( list1, GL_COMPILE );
-
     # Enter your vertices here
 
     glColor3f(0.0, 1.0, 0.0)
+    centerX = centerModel[0]
+    centerY = centerModel[1]
+    centerZ = centerModel[2]
 
     i = 0
     for triangle in listTriangles:
-        i = i+1
-        #print("TRANGLE", triangle, "\n")
-        #print(float(triangle[0][0]), float(triangle[0][1]), float(triangle[0][2]))
+
         glBegin(GL_TRIANGLES)
-        #print(listNormales[i])
+
         glNormal3f(float(listNormales[i][0]), float(listNormales[i][1]), float(listNormales[i][2]))
         glVertex3f(float(triangle[0][0]), float(triangle[0][1]), float(triangle[0][2]))
         glVertex3f(float(triangle[1][0]), float(triangle[1][1]), float(triangle[1][2]))
         glVertex3f(float(triangle[2][0]), float(triangle[2][1]), float(triangle[2][2]))
         glEnd()
+        i = i+1
         #for vertex in triangle:
             #print(vertex[2])
             #drawBall(vertex[0], vertex[1], vertex[2])
@@ -144,7 +142,7 @@ def drawBall(x,y,z):
     glutSolidSphere(sph1, 1, 100, 80)
 
 def display():
-    #glEnable(GL_DITHER)
+
     # Clear l'écran et donne une couleur
     glClearColor(0,0,0,0)
     #glClearDepth(0)
@@ -153,8 +151,8 @@ def display():
     # Gère les figures affichées avec les rotations et translations
     glPushMatrix()
 
-    gluLookAt(cameraX, cameraY, 200, 10, 0, 0, 0, 1, 0)
-
+    print(cameraX)
+    gluLookAt(cameraX, cameraY, cameraZ, centerX, centerY, centerZ, upX, upY, upZ)
 
     # Définition des types de surface pour les modèles 3D
 
@@ -182,10 +180,37 @@ def reshape(width, height):
 	    gluPerspective(50.0, height/width, 1.0, 1000.0)
     else:
         gluPerspective(50.0, width/height, 1.0, 1000.0)
-    glMatrixMode(GL_MODELVIEW)
+    #glMatrixMode(GL_MODELVIEW)
+
+def displayInfo():
+    print("Nombre de solides : ", len(listTriangles))
+    print("Baricentre : ", centerModel)
+    print("Longueur du modele : ", lengthModel)
+    print("Hauteur du modele : ", heightModel)
 
 # Appelées lorsqu'un événement touche est lancé
 def keyboard(key, x, y):
+    global cameraX, cameraY, cameraZ, isTranlateActivated
+    print(key)
+    if key == 'd':
+        print("touche")
+        cameraX = cameraX + 1
+    elif key == 'q':
+        cameraX = cameraX - 1
+    elif key == 'a':
+            cameraY = cameraY + 1
+    elif key == 'e':
+            cameraY = cameraY - 1
+    elif key == 'z':
+            cameraZ = cameraZ + 1
+    elif key == 's':
+            cameraZ = cameraZ - 1
+    elif key == 'r':
+        cameraX, cameraY, cameraZ = 50, 50, 200
+        centerX, centerY, centerZ = 10, 0, 0
+        upX, upY, upZ = 0, 1, 0
+    elif key == '\033':
+        sys.exit()
     glutPostRedisplay()
 
 ###############################################################
@@ -202,5 +227,8 @@ glutDisplayFunc(display)
 glutKeyboardFunc(keyboard)
 
 init()
+readFileAndFetchData()
+
+displayInfo()
 
 glutMainLoop()
